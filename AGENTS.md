@@ -289,3 +289,12 @@ CI 通过只能说明自动检查通过，不能替代人工语义收敛，也�
 - 自动 tag 默认不触发，只有 commit title 包含 `#patch`、`#minor`、`#major` 才会触发版本号更新。
 - 手动打 tag 必须使用 annotated tag。
 - 用户可见变更优先通过 PR 合入，并补齐 label 与验证说明。
+
+---
+
+## 10. Fork 本地约定（本文件唯一的 fork 改动）
+
+本仓库是 `ZhuLinsen/daily_stock_analysis` 的 fork，采用**本地长期维护**（不向上游提 PR）。
+fork 的仓库拓扑、同步流程、已做改动、Windows 踩坑与环境约束见 **[`FORK_NOTES.md`](FORK_NOTES.md)**；
+改动前请先读它，尤其是「别碰巨型文件，用新增文件 + 最小挂载点」这条纪律。
+上游规则以上文为准，fork 特有内容一律写进 `FORK_NOTES.md`，不要写进本文件。
