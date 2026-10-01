@@ -65,6 +65,7 @@ from src.agent.news_evidence import (
     reset_news_evidence_scope,
 )
 from src.services.empty_news import news_evidence_present
+from src.services.akshare_news_source import load_akshare_news_context
 from src.formatters import strip_hidden_markdown_metadata
 from src.phase_decision_guardrail import apply_phase_decision_guardrails
 from src.services.daily_market_context import (
@@ -754,6 +755,22 @@ class StockAnalysisPipeline:
                     else persisted_intelligence_context
                 )
 
+            # 免费个股新闻 / 公告（akshare 东财+巨潮，免 Key、免代理、fail-open）。
+            # 与搜索渠道相互独立：即使所有搜索 provider 全部失效（额度耗尽 / 网络不通），
+            # 本节仍能提供个股级消息面证据，避免「风险警报 / 利好催化」两节空转。
+            akshare_news_context = load_akshare_news_context(
+                code,
+                stock_name,
+                market=market or "cn",
+                is_index=is_index,
+            )
+            if akshare_news_context:
+                news_context = (
+                    f"{news_context}\n\n{akshare_news_context}"
+                    if news_context
+                    else akshare_news_context
+                )
+
             # Step 5: 获取分析上下文（技术面数据）
             self._emit_progress(58, f"{stock_name}：正在整理分析上下文")
             context = self._get_analysis_context_with_market_fallback(
@@ -859,6 +876,7 @@ class StockAnalysisPipeline:
                         news_result_count,
                         social_evidence_context,
                         persisted_intelligence_context,
+                        akshare_news_context,
                     )
                 record_llm_run(
                     success=bool(result and getattr(result, "success", True)),
