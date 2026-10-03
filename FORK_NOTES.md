@@ -189,3 +189,21 @@ rebase 后：
 4. `python -m pytest tests/test_akshare_news_source.py -m "not network" -q`
 5. **若上游改了 `news_context` 的组装方式或 `news_evidence_present` 的签名**，
    挂载点可能失效 —— 这是最需要复查的地方（也是当初刻意只留 3 个挂载点的原因）
+
+---
+
+## 8. 相关文档
+
+| 文档 | 内容 |
+|---|---|
+| **[`DATA_SOURCES.md`](DATA_SOURCES.md)** | **数据源全景**：行情/基本面/新闻/情绪各类源的用途、免费与收费边界、能力矩阵、全部新闻来源路径、以及「还能接入什么（免费/收费）」与接入判断清单 |
+| `AGENTS.md` | 上游项目规则真源（本 fork 只加了 §10 指针） |
+| `docs/full-guide.md` | 上游完整配置与部署指南 |
+| `.claude/reviews/design-akshare-free-news.md` | akshare 免费新闻源设计稿 + 实现偏差记录 |
+
+### 本机环境要点（详见 `DATA_SOURCES.md` §8）
+
+- 代理：Clash Party，**HTTP 端口 7892**（SOCKS 7891 / 混合 7890）；项目用 HTTP 代理格式，故填 7892
+- `USE_PROXY=true` 会让 **Clash 成为硬依赖** —— 关掉 Clash 时所有出网都会失败
+- 搜索渠道当前为 **Tavily（经代理）+ SerpAPI**；Anspire/Bocha 因额度耗尽已注释
+- 个股消息面主力是 **akshare 免费源**（`AKSHARE_NEWS_ENABLED=true`）
