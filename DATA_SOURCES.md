@@ -77,6 +77,42 @@
 | **AlphaVantageFetcher** | 3（写死） | 美股 | ✅ `ALPHAVANTAGE_API_KEY` | 日线、实时 |
 | **TwInstitutionalFetcher** | — | 台湾 | ❌ 免费（政府开放数据） | **三大法人买卖超**（台股独有） |
 
+#### 数据源的来源与性质（重要）
+
+同样是"免费行情源"，**性质差别很大**，可靠性也完全不同。下表的上游均由代码中的真实域名/导入库核实：
+
+| 数据源 | 上游 / 提供方 | 性质 | 说明 |
+|---|---|---|---|
+| **EfinanceFetcher** | **东方财富**（`push2.eastmoney.com`），经开源库 `efinance` | 第三方库**抓取**门户公开接口 | 非官方。东财全量接口数据最全但**最容易被封** |
+| **AkshareFetcher** | **多上游聚合**：东财(`*_em`)、腾讯(`*_tx`)、新浪(`*_sina`)、雪球(`*_xq`) …，经开源库 `akshare` | 第三方**聚合**库抓取多个门户 | 一个库覆盖很多门户（社区维护）。**上游任一门户改版，对应函数就会失效** |
+| **TencentFetcher** | **腾讯财经**（`qt.gtimg.cn`、`web.ifzq.gtimg.cn`） | 直连门户公开接口**抓取** | 单股票查询、负载小，被当作最终兜底 |
+| **TushareFetcher** | **Tushare Pro**（`api.tushare.pro`，深圳挖地兔） | **官方 API**（Token + 积分制） | 有正式服务与配额；积分可付费提升权限 |
+| **TickFlowFetcher** | **TickFlow**（tickflow.org） | **官方 SDK / 商业数据服务** | 能力**按套餐权限分层**（如标的池、申万板块需对应套餐） |
+| **PytdxFetcher** | **通达信**行情服务器，经 `pytdx` 库走 TDX 二进制协议 | **逆向协议**直连公共行情服务器 | 非官方 API；依赖服务器列表可用性 |
+| **FutuFetcher** | **富途证券** OpenAPI，经本机 OpenD 网关 | **券商官方 API** | 需富途账户 + 本机运行 OpenD 进程 |
+| **BaostockFetcher** | **Baostock**（`import baostock`） | 免费开放数据服务（**无需注册**） | 提供官方 Python 库，专为量化场景设计 |
+| **YfinanceFetcher** | **Yahoo Finance**（代码中还引用了 `stooq.com` 作为兜底） | 第三方库**抓取**公开接口 | 非官方。**日/韩/台股的唯一来源** |
+| **LongbridgeFetcher** | **长桥证券**（`openapi.longbridge.com`） | **券商官方 API**（OAuth / Legacy） | 官方 SDK |
+| **FinnhubFetcher** | **Finnhub.io** | **商业数据商官方 API** | 免费层 60 次/分 |
+| **AlphaVantageFetcher** | **Alpha Vantage**（`alphavantage.co`） | **商业数据商官方 API** | 免费层仅 **25 次/天**，很容易撞上限 |
+| **TwInstitutionalFetcher** | **台湾证券交易所**（twse.com.tw）+ **证券柜台买卖中心**（tpex.org.tw） | **政府开放数据**（OGDL v1） | 官方授权发布，最稳定的一类 |
+
+**四类性质的含义（决定了你该对它抱多大期望）**
+
+| 性质 | 有无服务承诺 | 稳定性 | 典型代表 |
+|---|---|---|---|
+| **官方 API**（券商 / 数据商 / 交易所） | ✅ 有 | 高 | Tushare、TickFlow、Longbridge、Futu、Finnhub、AlphaVantage |
+| **政府开放数据** | ✅ 有 | 高 | 台湾证交所三大法人 |
+| **第三方库抓取公开接口** | ❌ 无 | 中～低，**上游改版即失效** | efinance（东财）、akshare（聚合多门户）、yfinance（Yahoo）、腾讯直连 |
+| **逆向协议直连** | ❌ 无 | 低 | pytdx（通达信） |
+
+> 💡 **这解释了 README 那句话**：*"项目默认内置 AkShare、Baostock、YFinance 等免费行情源，可零配置运行；
+> 免费源受上游限流、接口变动和网络波动影响，**稳定性不保证**。"*
+> —— 因为默认链路里主力（efinance / akshare / 腾讯）全是**抓取型**，没有服务承诺。
+>
+> 想要稳定性，就要往表格上半部分走：**Tushare / TickFlow / Longbridge / Futu** 这类有正式协议的数据源。
+> 这也正是项目把它们做成"配了 Key 就自动提升优先级"的原因。
+
 > ⚠️ **Tushare 会自我提升到 −1**：只要配了 `TUSHARE_TOKEN` 且 HTTP 客户端初始化成功，
 > 它就排到所有源最前面（`tushare_fetcher.py:216-235`）。这是"配了 token 就用它"的设计。
 
@@ -163,6 +199,21 @@ A 股日线/实时/板块/涨跌家数基本够用。**代价**：免费源受�
 | 5 | SerpAPI | `SERPAPI_API_KEYS` | **约 100 次/月**（代码注释） | ⚠️ 实测可直连 |
 | 6 | MiniMax | `MINIMAX_API_KEYS` | 需 Coding Plan 订阅 | ✅ |
 | 7 | **SearXNG** | `SEARXNG_BASE_URLS` | **自建无配额，完全免费** | ✅ 可 `127.0.0.1` |
+
+**各搜索源的来源与性质**
+
+| Provider | 提供方 | 性质 |
+|---|---|---|
+| Anspire 安思派 | Anspire Open（国内） | 国内商业服务商；**同一个 Key 还兼做大模型网关**（`config.py:1481-1506`） |
+| Bocha 博查 | 博查（国内） | 国内商业搜索 API，主打中文优化与 AI 摘要 |
+| Tavily | Tavily（境外） | 面向 AI Agent 的商业搜索 API，有免费额度 |
+| Brave | Brave Software（境外） | **独立搜索引擎，自建索引**（不转发 Google 结果） |
+| SerpAPI | SerpApi（境外） | **Google 结果代理**服务——本质是代你抓 Google，所以最贵、额度最小 |
+| MiniMax | MiniMax（国内） | 附带在 Coding Plan 订阅里的结构化搜索 |
+| SearXNG | **开源项目，你自建** | **元搜索引擎**：聚合上游引擎（Google/Bing/百度…）的结果，**无商业配额** |
+
+> 理解这个差别有实际意义：**SerpAPI 是按次转卖 Google**，所以免费额度最小（约 100/月）；
+> **Brave 用自己的索引**，额度更宽松；**SearXNG 是你自己聚合**，无配额但需要自己维护、且受上游引擎限流影响。
 
 **关键机制**
 
