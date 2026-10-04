@@ -197,6 +197,7 @@ rebase 后：
 | 文档 | 内容 |
 |---|---|
 | **[`DATA_SOURCES.md`](DATA_SOURCES.md)** | **数据源全景**：行情/基本面/新闻/情绪各类源的用途、免费与收费边界、能力矩阵、全部新闻来源路径、以及「还能接入什么（免费/收费）」与接入判断清单 |
+| **[`GLOSSARY.md`](GLOSSARY.md)** | **术语大全（新手向）**：6 个数据块、8 种状态、行情技术指标、基本面 7 子块、筹码/资金流/龙虎榜、`news_result_count` 三态、评分档位与降级护栏、数据源名称对照 |
 | `AGENTS.md` | 上游项目规则真源（本 fork 只加了 §10 指针） |
 | `docs/full-guide.md` | 上游完整配置与部署指南 |
 | `.claude/reviews/design-akshare-free-news.md` | akshare 免费新闻源设计稿 + 实现偏差记录 |
