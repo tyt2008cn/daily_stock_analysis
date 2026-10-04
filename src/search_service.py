@@ -4532,40 +4532,69 @@ class SearchService:
             if search_count >= max_searches:
                 break
             
-            # 选择搜索引擎（轮流使用）
+            # 选择搜索引擎（轮流使用），并从轮转起点**顺序回退**。
+            # 某个引擎失败或零结果时，该维度不再直接作废，而是继续尝试其余可用引擎；
+            # 只有全部引擎都拿不到结果时才沿用最后一次失败响应。
+            # 这与 search_stock_news / search_topic_news 的回退语义一致——
+            # 此前这里只调用一次，导致单个失效引擎（欠费、网络不通）就会永久丢掉一个维度，
+            # 并让真正可用的引擎只拿到 1/N 的机会。
             available_providers = [p for p in self._providers if p.is_available]
             if not available_providers:
                 break
-            
-            provider = available_providers[provider_index % len(available_providers)]
+
+            start_index = provider_index % len(available_providers)
+            ordered_providers = (
+                available_providers[start_index:] + available_providers[:start_index]
+            )
             provider_index += 1
-            
+
             request_days = (
                 self.ANALYTICAL_INTEL_LOOKBACK_DAYS
                 if dim['name'] in self.ANALYTICAL_INTEL_DIMENSIONS
                 else search_days
             )
 
-            logger.info(
-                "[情报搜索] %s: 使用 %s，请求窗口: 近%s天",
-                dim['desc'],
-                provider.name,
-                request_days,
-            )
+            response = None
+            last_failure = None
+            for candidate in ordered_providers:
+                provider = candidate
+                logger.info(
+                    "[情报搜索] %s: 使用 %s，请求窗口: 近%s天",
+                    dim['desc'],
+                    provider.name,
+                    request_days,
+                )
 
-            if isinstance(provider, TavilySearchProvider) and dim.get('tavily_topic'):
-                response = provider.search(
-                    dim['query'],
-                    max_results=provider_max_results,
-                    days=request_days,
-                    topic=dim['tavily_topic'],
+                if isinstance(provider, TavilySearchProvider) and dim.get('tavily_topic'):
+                    candidate_response = provider.search(
+                        dim['query'],
+                        max_results=provider_max_results,
+                        days=request_days,
+                        topic=dim['tavily_topic'],
+                    )
+                else:
+                    candidate_response = provider.search(
+                        dim['query'],
+                        max_results=provider_max_results,
+                        days=request_days,
+                    )
+
+                if candidate_response.success and candidate_response.results:
+                    response = candidate_response
+                    break
+
+                last_failure = candidate_response
+                logger.warning(
+                    "[情报搜索] %s: %s 未返回可用结果（%s），回退下一个引擎",
+                    dim['desc'],
+                    provider.name,
+                    candidate_response.error_message or "0 条结果",
                 )
-            else:
-                response = provider.search(
-                    dim['query'],
-                    max_results=provider_max_results,
-                    days=request_days,
-                )
+
+            if response is None:
+                # 所有引擎都失败或零结果：沿用最后一次响应，
+                # 让下游过滤逻辑与日志仍能说明失败原因。
+                response = last_failure
             if dim['strict_freshness']:
                 filtered_response = self._filter_news_response(
                     response,
